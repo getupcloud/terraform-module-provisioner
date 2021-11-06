@@ -1,0 +1,60 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "centos/8"
+  config.vm.provider "virtualbox"
+  config.vm.hostname = "infra-0"
+  config.vm.network "public_network", bridge: "enp0s20f0u2u4"
+  config.ssh.verify_host_key = :never
+
+  config.vm.provider :virtualbox do |vb|
+    vb.gui = true
+    vb.memory = 4096
+
+    unless File.exist?("containers.vdi")
+      vb.customize [ "createmedium", "disk", "--filename", "containers.vdi", "--format", "vdi", "--size", 100 ]
+    end
+    unless File.exist?("kubelet.vdi")
+      vb.customize [ "createmedium", "disk", "--filename", "kubelet.vdi", "--format", "vdi", "--size", 100 ]
+    end
+
+    vb.customize ['storageattach', :id,  '--storagectl', 'IDE', '--port', 0, '--device', 1, '--type', 'hdd', '--medium', 'containers.vdi']
+    vb.customize ['storageattach', :id,  '--storagectl', 'IDE', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', 'kubelet.vdi']
+  end
+
+  config.vm.provision "shell", name: "host-setup", inline: <<-SHELL
+    # /vagrant/provision/provision.sh local-provision
+    sed -i s/^SELINUX=.*/SELINUX=disabled/ /etc/selinux/config
+    setenforce 0
+    for i in sdb:/var/lib/containers sdc:/var/lib/kubelet; do
+      mnt=${i#*:}
+      dev=${i%:*}
+      mkfs.xfs /dev/$dev
+      echo "/dev/$dev $mnt xfs defaults,nofail 0 0" >> /etc/fstab
+    done
+    yum install -y jq
+  SHELL
+
+  config.vm.provision "shell" do |shell|
+    shell.privileged = true
+    shell.inline = 'echo rebooting...'
+    shell.reboot = true
+  end
+
+#  config.vm.provision "shell", name: "vbox-setup", inline: <<-SHELL
+#    set -x
+#    #ln -s /usr/bin/python3 /usr/bin/python
+#    #yum install -y make gcc perl dkms bzip2 kernel-{headers,devel} libselinux-python3
+#    yum install -y make gcc perl dkms bzip2 kernel-{headers,devel} jq
+#    curl -o /VBoxGuestAdditions.iso -L https://download.virtualbox.org/virtualbox/6.1.22/VBoxGuestAdditions_6.1.22.iso
+#    mkdir -p /mnt/vbox
+#    mount -o loop -r /VBoxGuestAdditions.iso /mnt/vbox
+#    cd /mnt/vbox
+#    ./VBoxLinuxAdditions.run
+#    cd /
+#    umount /mnt/vbox
+#    rm -rf /VBoxGuestAdditions.iso /mnt/vbox
+#    ip a
+#  SHELL
+end

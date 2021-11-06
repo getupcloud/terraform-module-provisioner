@@ -1,0 +1,8 @@
+#!/bin/bash
+
+vagrant destroy -f
+vagrant up
+sleep 3
+ip=$(vagrant ssh -c "ip --json a show dev eth1 | jq '.[0]|.addr_info|.[]|select(.family == \"inet\")|.local' -r" | tr -d \\r)
+m=master
+sudo sed -i -e "s/^192\.168\.15\.[0-9]\+\s\+${m}-0/$ip ${m}-0/" /etc/hosts
