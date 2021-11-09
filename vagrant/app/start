@@ -1,5 +1,6 @@
 #!/bin/bash
 
+export VAGRANT_EXPERIMENTAL=disks
 vagrant destroy -f
 vagrant up
 sleep 3

@@ -1,38 +1,64 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+memory = 4096
+local_interface = "enp0s20f0u2u4"
+hostname = "infra-0"
+disks = [
+  {
+    :name => "containers",
+    :device => "/dev/sdb",
+    :mount_point => "/var/lib/containers",
+    :size_gb => 20,
+    :ide_port => 0,
+    :ide_device => 1,
+  },
+  {
+    :name => "kubelet",
+    :device => "/dev/sdc",
+    :mount_point => "/var/lib/kubelet",
+    :size_gb => 2,
+    :ide_port => 1,
+    :ide_device => 0,
+  }
+]
+
 Vagrant.configure("2") do |config|
   config.vm.box = "centos/8"
   config.vm.provider "virtualbox"
-  config.vm.hostname = "infra-0"
-  config.vm.network "public_network", bridge: "enp0s20f0u2u4"
+  config.vm.hostname = hostname
+  config.vm.network "public_network", bridge: local_interface
   config.ssh.verify_host_key = :never
+  # https://stackoverflow.com/questions/28471542/cant-ssh-to-vagrant-vms-using-the-insecure-private-key-vagrant-1-7-2
+  config.ssh.insert_key = false
+  config.ssh.private_key_path = "~/.vagrant.d/insecure_private_key"
 
   config.vm.provider :virtualbox do |vb|
     vb.gui = true
-    vb.memory = 4096
+    vb.memory = memory
 
-    unless File.exist?("containers.vdi")
-      vb.customize [ "createmedium", "disk", "--filename", "containers.vdi", "--format", "vdi", "--size", 30 * 1024 ]
+    disks.each do |disk|
+      vdi = "#{disk[:name]}.vdi"
+      unless File.exist?(vdi)
+        vb.customize [ "createmedium", "disk", "--filename", "#{disk[:name]}.vdi", "--format", "vdi", "--size", disk[:size_gb] * 1024 ]
+      end
+      vb.customize ['storageattach', :id,  '--storagectl', 'IDE', '--port', disk[:ide_port], '--device', disk[:ide_device], '--type', 'hdd', '--medium', vdi]
     end
-    unless File.exist?("kubelet.vdi")
-      vb.customize [ "createmedium", "disk", "--filename", "kubelet.vdi", "--format", "vdi", "--size", 2 * 1024 ]
-    end
-
-    vb.customize ['storageattach', :id,  '--storagectl', 'IDE', '--port', 0, '--device', 1, '--type', 'hdd', '--medium', 'containers.vdi']
-    vb.customize ['storageattach', :id,  '--storagectl', 'IDE', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', 'kubelet.vdi']
   end
 
-  config.vm.provision "shell", name: "host-setup", inline: <<-SHELL
+  config.vm.provision "shell", name: "host-setup", inline: <<~SHELL
     # /vagrant/provision/provision.sh local-provision
+    set -x
     sed -i s/^SELINUX=.*/SELINUX=disabled/ /etc/selinux/config
     setenforce 0
-    for i in sdb:/var/lib/containers sdc:/var/lib/kubelet; do
-      mnt=${i#*:}
-      dev=${i%:*}
-      mkfs.xfs /dev/$dev
-      echo "/dev/$dev $mnt xfs defaults,nofail 0 0" >> /etc/fstab
-    done
+    #{
+      s = ""
+      disks.each do |disk|
+        s += "mkfs.xfs #{disk[:device]}\n"
+        s += "echo #{[disk[:device], disk[:mount_point], "xfs defaults,nofail 0 0"].join(" ")} >> /etc/fstab\n"
+      end
+      s
+    }
     yum install -y jq
   SHELL
 
@@ -41,20 +67,4 @@ Vagrant.configure("2") do |config|
     shell.inline = 'echo rebooting...'
     shell.reboot = true
   end
-
-#  config.vm.provision "shell", name: "vbox-setup", inline: <<-SHELL
-#    set -x
-#    #ln -s /usr/bin/python3 /usr/bin/python
-#    #yum install -y make gcc perl dkms bzip2 kernel-{headers,devel} libselinux-python3
-#    yum install -y make gcc perl dkms bzip2 kernel-{headers,devel} jq
-#    curl -o /VBoxGuestAdditions.iso -L https://download.virtualbox.org/virtualbox/6.1.22/VBoxGuestAdditions_6.1.22.iso
-#    mkdir -p /mnt/vbox
-#    mount -o loop -r /VBoxGuestAdditions.iso /mnt/vbox
-#    cd /mnt/vbox
-#    ./VBoxLinuxAdditions.run
-#    cd /
-#    umount /mnt/vbox
-#    rm -rf /VBoxGuestAdditions.iso /mnt/vbox
-#    ip a
-#  SHELL
 end
