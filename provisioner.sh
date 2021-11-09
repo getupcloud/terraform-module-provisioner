@@ -246,6 +246,11 @@ function create_disks()
         ln -s /var/lib/containers/$i /var/lib/$i
       fi
     done
+
+    if grep -qw swap /etc/fstab ; then
+        sed -i -e 's/\(.*[[:space:]]swap[[:space:]].*\)/#\1/g' /etc/fstab
+    fi
+    swapoff -a || true
   } >&2
 
   _read_disks
