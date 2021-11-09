@@ -120,10 +120,10 @@ variable "install_packages" {
     "python3-pip",
     "python3-pyOpenSSL",
     "python3-virtualenv",
+    "strace",
     "tcpdump"
   ]
 }
-#    "strace",
 
 variable "uninstall_packages" {
   description = "Packages to install on nodes"
