@@ -1,54 +1,59 @@
 variable "masters" {
   description = "List of master nodes to provision"
   type        = list(any)
-  default = [
-    {
-      address : "1.2.3.10",
-      hostname : "master-0",
-      ssh_private_key : "./master_private_key",
-      disks : {
-        etcd : {
-          device : "/dev/disk1",
-          mountpoint : "/var/lib/etcd",
-          filesystem : "ext4"
-          format : false
-        },
-        kubelet : {
-          device : "/dev/disk2",
-          mountpoint : "/var/lib/kubelet",
-          filesystem : "ext4"
-          format : true
-        }
-        containers : {
-          device : "/dev/disk3",
-          mountpoint : "/var/lib/containers",
-          filesystem : "ext4",
-          format : true
-        }
-      }
-    }
-  ]
+  default     = []
+
+  # Example: [
+  #   {
+  #     address : "1.2.3.10",
+  #     hostname : "master-0",
+  #     ssh_private_key : "./master_private_key",
+  #     disks : {
+  #       etcd : {
+  #         device : "/dev/disk1",
+  #         mountpoint : "/var/lib/etcd",
+  #         filesystem : "ext4"
+  #         format : false
+  #       },
+  #       kubelet : {
+  #         device : "/dev/disk2",
+  #         mountpoint : "/var/lib/kubelet",
+  #         filesystem : "ext4"
+  #         format : true
+  #       }
+  #       containers : {
+  #         device : "/dev/disk3",
+  #         mountpoint : "/var/lib/containers",
+  #         filesystem : "ext4",
+  #         format : true
+  #       }
+  #     }
+  #   }
+  # ]
 }
 
 variable "workers" {
   description = "List of worker nodes to provision"
   type        = list(any)
-  default = [
-    {
-      hostname : "infra-0",
-      address : "1.2.3.20",
-      ssh_private_key : "./infra_private_key",
-      node_labels : { role : "infra" },
-      node_taints : ["dedicated=infra:NoSchedule"]
-    },
-    {
-      hostname : "app-0",
-      address : "1.2.3.30",
-      ssh_private_key : ".vagrant/machines/app/virtualbox/private_key",
-      node_labels : { role : "app" },
-      node_taints : []
-    }
-  ]
+  default     = []
+
+  # Example:
+  # [
+  #   {
+  #     hostname : "infra-0",
+  #     address : "1.2.3.20",
+  #     ssh_private_key : "./infra_private_key",
+  #     node_labels : { role : "infra" },
+  #     node_taints : ["dedicated=infra:NoSchedule"]
+  #   },
+  #   {
+  #     hostname : "app-0",
+  #     address : "1.2.3.30",
+  #     ssh_private_key : ".vagrant/machines/app/virtualbox/private_key",
+  #     node_labels : { role : "app" },
+  #     node_taints : []
+  #   }
+  # ]
 }
 
 variable "ssh_user" {
