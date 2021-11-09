@@ -13,13 +13,13 @@ Vagrant.configure("2") do |config|
     vb.memory = 4096
 
     unless File.exist?("containers.vdi")
-      vb.customize [ "createmedium", "disk", "--filename", "containers.vdi", "--format", "vdi", "--size", 100 ]
+      vb.customize [ "createmedium", "disk", "--filename", "containers.vdi", "--format", "vdi", "--size", 30 * 1024 ]
     end
     unless File.exist?("kubelet.vdi")
-      vb.customize [ "createmedium", "disk", "--filename", "kubelet.vdi", "--format", "vdi", "--size", 100 ]
+      vb.customize [ "createmedium", "disk", "--filename", "kubelet.vdi", "--format", "vdi", "--size", 2 * 2024 ]
     end
     unless File.exist?("etcd.vdi")
-      vb.customize [ "createmedium", "disk", "--filename", "etcd.vdi", "--format", "vdi", "--size", 100 ]
+      vb.customize [ "createmedium", "disk", "--filename", "etcd.vdi", "--format", "vdi", "--size", 2 * 1024 ]
     end
 
     vb.customize ['storageattach', :id,  '--storagectl', 'IDE', '--port', 0, '--device', 1, '--type', 'hdd', '--medium', 'containers.vdi']

@@ -23,7 +23,7 @@ resource "shell_script" "packages" {
     PROVISION_DATA_NODE_TYPE          = each.value.node_type
     PROVISION_DATA_INSTALL_PACKAGES   = join(" ", sort(var.install_packages))
     PROVISION_DATA_UNINSTALL_PACKAGES = join(" ", sort(var.uninstall_packages))
-    PROVISION_DEBUG = "false"
+    PROVISION_DEBUG                   = "false"
   }
 }
 
@@ -50,7 +50,7 @@ resource "shell_script" "disks-master" {
     ssh_bastion_private_key = var.ssh_bastion_private_key
 
     PROVISION_DATA_NODE_TYPE = each.value.node_type
-    PROVISION_DEBUG = "false"
+    PROVISION_DEBUG          = "false"
   }
 }
 
