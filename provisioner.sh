@@ -1,8 +1,12 @@
 #!/bin/bash
 
-[ "$PROVISION_DEBUG" == true ] && set -x
+if [ "$PROVISION_DEBUG" == true ]; then
+  exec 2>>/var/log/provision.log
+  set -x
+fi
 
 func=$1_$2
+date >&2
 echo "Starting [$0 $@: func=$func]" >&2
 
 function _()
@@ -88,183 +92,215 @@ function delete_packages()
 ##############################
 ##           Disks          ##
 ##############################
-#
-## print device UUID
-#function _get_device_uuid()
-#{
-#  local device=$(readlink $1)
-#
-#  if ! [ -b "$device" ]; then
-#    echo "Invalid device: $device"
-#    exit 1
-#  fi
-#
-#  local uuid=$(lsblk -no UUID $device | tr -d ' \n')
-#
-#  if [ -z "$uuid" ]; then
-#    echo Unable to find UUID for device: $device
-#    exit 1
-#  fi
-#
-#  echo $uuid
-#}
-#
-## print device mount point
-#function _get_device_mount_point()
-#{
-#  local device=$(readlink $1)
-#
-#  if ! _fstab_has_device $device; then
-#    return
-#  fi
-#
-#  awk '{print $2}' /etc/fstab
-#}
-#
-## print device fstype
-#function _get_device_fstype()
-#{
-#  local device=$(readlink $1)
-#
-#  if ! _fstab_has_device $device; then
-#    return
-#  fi
-#
-#  awk "//{print \$3}" /etc/fstab
-#}
-#
-## print fstab line for device
-#function _fstab_get_line()
-#{
-#  local device=$(readlink $1)
-#
-#  if ! [ -b "$device" ]; then
-#    echo "Invalid device: $device"
-#    exit 1
-#  fi
-#
-#  local uuid=$(get_device_uuid $device)
-#
-#  grep -m1 -E "^($1|$device|UUID=$uuid)" /etc/fstab
-#}
-#
-## return 0 if found
-## return 1 if not found
-#function _fstab_has_device()
-#{
-#  local device=$(readlink $1)
-#
-#  if ! [ -b "$device" ]; then
-#    echo "Invalid device: $device"
-#    exit 1
-#  fi
-#
-#  local uuid=$(get_device_uuid $device)
-#
-#  _fstab_get_line &>/dev/null
-#}
-#
-#
-#function _add_to_fstab()
-#{
-#  local device=$(readlink $1)
-#  local mount_point="$2"
-#  local fstype="$3"
-#  local mount_opts="$4"
-#
-#  local uuid=$(get_device_uuid $device)
-#  local fstab_entry="UUID=$uuid ${mount_point} ${fstype} defaults,nofail${mount_opts:+,$mount_opts} 0 0"
-#
-#  echo "$fstab_entry" >> /etc/fstab
-#  mount ${mount_point}
-#
-#}
-#
-#function _mount()
-#{
-#  local device=$(readlink $1)
-#  local mount_point="$2"
-#
-#  if ! _fstab_has_device $device $mount_point; then
-#    
-#  else
-#  fi
-#
-#  if ! [ -d "$mount_point" ]; then
-#    mkdir $mount_point
-#  fi
-#
-#  local fstab_entry="UUID=$uuid ${mount_point} ${fstype} defaults,nofail${mount_opts:+,$mount_opts} 0 0"
-#
-#  echo "$fstab_entry" >> /etc/fstab
-#  mount ${mount_point}
-#}
+
+function _resolve_device_name()
+{
+  local device="$1"
+
+  if [ -b "$device" ]; then
+    echo $device
+    return
+  fi
+
+  if [[ $device =~ /^UUID=/ ]]; then
+    local uuid=${device#*=}
+    lsblk -pnlo UUID,NAME | awk "/^$uuid /{print \$2}"
+    return
+  elif [[ $device =~ /^PARTUUID=/ ]]; then
+    local uuid=${device#*=}
+    lsblk -pnlo PARTUUID,NAME | awk "/^$uuid /{print \$2}"
+    return
+  elif [[ $device =~ /^LABEL=/ ]]; then
+    local label=${#*=}
+    lsblk -pnlo LABEL,NAME | awk "/^$label /{print \$2}"
+    return
+  elif [[ $device =~ /^PARTLABEL=/ ]]; then
+    local label=${#*=}
+    lsblk -pnlo PARTLABEL,NAME | awk "/^$label /{print \$2}"
+    return
+  fi
+
+  echo Device not found: $device >&2
+  return 1
+}
+
+
+# print fstab line for device ($1)
+function _fstab_get_line()
+{
+  local device=$(readlink $1)
+
+  if ! [ -b "$device" ]; then
+    echo "Invalid device: $device"
+    exit 1
+  fi
+
+  local label=$(lsblk -pno LABEL $device)
+  local uuid=$(lsblk -pno UUID $device)
+  local partuuid=$(lsblk -pno PARTUUID $device)
+  local partlabel=$(lsblk -pno PARTLABEL $device)
+
+  grep -m1 -E "^[[:space:]]*($1|$device|UUID=$uuid|LABEL=$label|PARTUUID=$partuid|PARTLABEL=$partlabel)[[:space:]]" /etc/fstab
+}
+
+# check if device ($1) is in /etc/fstab
+# return 0 if found
+# return 1 if not found
+function _fstab_has_device()
+{
+  local device=$1
+
+  if ! [ -b "$device" ]; then
+    echo "Invalid device: $device"
+    exit 1
+  fi
+
+  local uuid=$(get_device_uuid $device)
+
+  _fstab_get_line $device &>/dev/null
+}
+
+function _add_to_fstab()
+{
+  local device=$1
+  local mountpoint="$2"
+  local filesystem="$3"
+  local mount_opts="${4:-}"
+
+  local uuid=$(lsblk -pno UUID $device)
+  local fstab_entry="UUID=$uuid ${mountpoint} ${filesystem} defaults,nofail${mount_opts:+,$mount_opts} 0 0"
+
+  echo "$fstab_entry" >> /etc/fstab
+}
+
+function _remove_from_fstab()
+{
+  local device=$1
+  local label=$(lsblk -pno LABEL $device)
+  local uuid=$(lsblk -pno UUID $device)
+  local partuuid=$(lsblk -pno PARTUUID $device)
+  local partlabel=$(lsblk -pno PARTLABEL $device)
+
+  sed -i -E "s;^[^\s#]*(UUID=$uuid|LABEL=$label|PARTUUID=$partuuid|PARTLABEL=$partlabel|$device)\s.*;#\0;g"  /etc/fstab
+}
 
 function _read_disks()
 {
-    if lsblk -pno MOUNTPOINT | grep -q '^/var/lib/containers$'; then
-      items+=( "\"varlibcontainers\":true" )
-    else
-      items+=( "\"varlibcontainers\":false" )
-      echo Missing dedicated device for mount point: /var/lib/containers 2>&1
-      status=1
+    export PROVISION_DATA_DISKS_JSON="$(base64 -d <<<$PROVISION_DATA_DISKS)"
+
+    if [ "$(jq length <<<$PROVISION_DATA_DISKS_JSON)" -eq 0 ]; then
+        echo {}
+        return
     fi
 
-    if [ "$PROVISION_DATA_NODE_TYPE" == master ]; then
-      if lsblk -pno MOUNTPOINT | grep -q '^/var/lib/etcd$'; then
-        items+=( "\"varlibetcd\":true" )
-      else
-        items+=( "\"varlibetcd\":false" )
-        echo Missing dedicated device for mount point: /var/lib/etcd 2>&1
-        status=1
-      fi
-    fi
+    local items=()
+    for disk_name in $(jq -r 'keys|.[]' <<<"$PROVISION_DATA_DISKS_JSON"); do
+        unset device mountpoint filesystem
+        local device mountpoint filesystem
+        eval $(jq ".${disk_name}"'|to_entries|map("\(.key)=\"\(.value|tostring)\"")|.[]' -r <<<$PROVISION_DATA_DISKS_JSON)
+
+        if ! device_name=$(_resolve_device_name $device); then
+          exit 1
+        fi
+
+        local current_mountpoint=$(lsblk -pno MOUNTPOINT "$device_name" || true)
+        local current_filesystem=$(lsblk -pno FSTYPE "$device_name" || true)
+
+        items+=(
+            '"'${disk_name}'":{"device":"'${device}'","mountpoint":"'${current_mountpoint}'","filesystem":"'${current_filesystem}'"}'
+        )
+    done
 
   echo {
   join , "${items[@]}"
   echo }
 }
 
-function create_disks()
+function _create_disks()
 {
-  local items=()
-  local status=0
-
-  {
-    systemctl stop docker containerd &>/dev/null || true
-
-    if ! [ -d /var/lib/containers ]; then
-      mkdir /var/lib/containers
-    fi
-
-    for i in docker containerd; do
-      if [ -d /var/lib/$i ]; then
-        mv /var/lib/$i /var/lib/containers/
-      fi
-
-      if ! [ -L /var/lib/$i ]; then
-        ln -s /var/lib/containers/$i /var/lib/$i
-      fi
-    done
-
     if grep -qw swap /etc/fstab ; then
-        sed -i -e 's/\(.*[[:space:]]swap[[:space:]].*\)/#\1/g' /etc/fstab
+        sed -i -E 's/^([^\s#]+.*\bswap\b.*)/#\0/g' /etc/fstab
     fi
     swapoff -a || true
-  } >&2
 
+    export PROVISION_DATA_DISKS_JSON="$(base64 -d <<<$PROVISION_DATA_DISKS)"
+    if [ "$(jq length <<<$PROVISION_DATA_DISKS_JSON)" -eq 0 ]; then
+        return
+    fi
+
+    for disk_name in $(jq -r 'keys|.[]' <<<"$PROVISION_DATA_DISKS_JSON"); do
+        unset device mountpoint filesystem filesystem_options format
+        eval $(jq ".${disk_name}"'|to_entries|map("\(.key)=\"\(.value|tostring)\"")|.[]' -r <<<$PROVISION_DATA_DISKS_JSON)
+
+        if ! device_name=$(_resolve_device_name $device); then
+          exit 1
+        fi
+
+        local current_mountpoint=$(lsblk -pno MOUNTPOINT "$device_name" || true)
+        local current_filesystem=$(lsblk -pno FSTYPE "$device_name" || true)
+
+        if [ "$disk_name" == containers ]; then
+            systemctl stop docker containerd &>/dev/null || true
+        fi
+
+        if [ -d "$current_mountpoint" ] && [ "$current_mountpoint" != "$mountpoint" ]; then
+          umount "$current_mountpoint"
+        fi
+
+        if [ -d "$mountpoint" ]; then
+          umount $mountpoint 2>/dev/null || true
+        fi
+
+        if [ "$disk_name" == containers ]; then
+            if ! [ -d "$mountpoint" ]; then
+              mkdir "$mountpoint"
+            fi
+
+            for i in docker containerd; do
+              umount /var/lib/$i 2>/dev/null || true
+              if [ -d /var/lib/$i ]; then
+                mv /var/lib/$i "$mountpoint"
+              fi
+
+              if ! [ -L /var/lib/$i ]; then
+                ln -s "$mountpoint/$i" /var/lib/$i
+              fi
+            done
+        fi
+
+        if [ "$format" == "true" ]; then
+            if [ -n "$filesystem" ] && [ "$filesystem" != "$current_filesystem" ]; then
+                mkfs.$filesystem $filesystem_options $device_name
+            fi
+        fi
+
+        _remove_from_fstab $device_name
+        _add_to_fstab $device_name $mountpoint $filesystem $mount_options
+        mount $mountpoint
+    done
+
+  systemctl daemon-reload
+}
+
+function create_disks()
+{
+  status=0
+  _create_disks
   _read_disks
   exit $status
 }
 
 function read_disks()
 {
+  status=0
   _read_disks
+  exit $status
 }
 
 function update_disks()
 {
   create_disks
+  exit $status
 }
 
 function delete_disks()

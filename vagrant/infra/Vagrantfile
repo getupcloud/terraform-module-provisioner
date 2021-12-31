@@ -2,7 +2,7 @@
 # vi: set ft=ruby :
 
 memory = 4096
-local_interface = "enp0s20f0u2u4"
+local_interface = ENV["DEFAULT_INTERFACE"] || "eth0"
 hostname = "infra-0"
 disks = [
   {

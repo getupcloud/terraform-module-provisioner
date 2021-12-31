@@ -35,9 +35,9 @@ shift
 
 cat $COMMAND | ssh $SSH_OPTIONS -i $ssh_private_key $ssh_user@$ssh_host tee $shfile >/dev/null
 {
-  for v in "${!PROVISION_DATA@}"; do
+  for v in "${!PROVISION_@}"; do
     echo $v=${!v@Q}
   done
 } | ssh $SSH_OPTIONS -i $ssh_private_key $ssh_user@$ssh_host -- tee $envfile >/dev/null
 
-ssh $SSH_OPTIONS -i $ssh_private_key $ssh_user@$ssh_host -- sudo bash --noprofile -c "'set -e; source $envfile; source $shfile $@; rm -f $envfile $shfile'"
+ssh $SSH_OPTIONS -i $ssh_private_key $ssh_user@$ssh_host -- sudo bash --noprofile -c "'set -ae; source $envfile; source $shfile $@; rm -f $envfile $shfile'"

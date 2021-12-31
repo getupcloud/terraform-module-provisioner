@@ -24,7 +24,8 @@ variable "masters" {
   #       containers : {
   #         device : "/dev/disk3",
   #         mountpoint : "/var/lib/containers",
-  #         filesystem : "ext4",
+  #         filesystem : "xfs",
+  #         filesystem_options : "-n ftype=1",
   #         format : true
   #       }
   #     }
@@ -132,4 +133,10 @@ variable "uninstall_packages" {
     "firewalld",
     "ntpd"
   ]
+}
+
+variable "provision_debug" {
+  description = "Print debug messages into /var/log/provision.log"
+  type        = bool
+  default     = false
 }

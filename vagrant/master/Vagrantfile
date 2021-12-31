@@ -2,7 +2,7 @@
 # vi: set ft=ruby :
 
 memory = 4096
-local_interface = "enp0s20f0u2u4"
+local_interface = ENV["DEFAULT_INTERFACE"] || "eth0"
 hostname = "master-0"
 disks = [
   {
@@ -11,7 +11,7 @@ disks = [
     :mount_point => "/var/lib/containers",
     :size_gb => 20,
     :ide_port => 0,
-    :ide_device => 1,
+    :ide_device => 1
   },
   {
     :name => "kubelet",
@@ -19,7 +19,15 @@ disks = [
     :mount_point => "/var/lib/kubelet",
     :size_gb => 2,
     :ide_port => 1,
-    :ide_device => 0,
+    :ide_device => 0
+  },
+  {
+    :name => "etcd",
+    :device => "/dev/sdd",
+    :mount_point => "/var/lib/etcd",
+    :size_gb => 1,
+    :ide_port => 1,
+    :ide_device => 1
   }
 ]
 
