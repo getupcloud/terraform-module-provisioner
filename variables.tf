@@ -135,6 +135,12 @@ variable "uninstall_packages" {
   ]
 }
 
+variable "etc_hosts" {
+  description = "Entries to add to /etc/hosts on each node"
+  type        = map(string)
+  default     = {}
+}
+
 variable "provision_debug" {
   description = "Print debug messages into /var/log/provision.log"
   type        = bool

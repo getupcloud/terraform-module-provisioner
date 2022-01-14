@@ -54,3 +54,31 @@ resource "shell_script" "disks" {
     PROVISION_DATA_DISKS     = base64encode(jsonencode(each.value.disks))
   }
 }
+
+resource "shell_script" "etc_hosts" {
+  for_each = { for i in concat(local.masters, local.workers) : try(i.address, i.hostname) => i }
+
+  interpreter = ["${path.module}/ssh-wrapper.sh"]
+
+  lifecycle_commands {
+    create = "provisioner.sh create etc_hosts"
+    update = "provisioner.sh update etc_hosts"
+    read   = "provisioner.sh read etc_hosts"
+    delete = "provisioner.sh delete etc_hosts"
+  }
+
+  environment = {
+    ssh_host                = try(each.value.address, each.value.hostname)
+    ssh_user                = try(each.value.ssh_user, var.ssh_user)
+    ssh_password            = try(each.value.ssh_password, var.ssh_password)
+    ssh_private_key         = try(each.value.ssh_private_key, var.ssh_private_key)
+    ssh_bastion_host        = var.ssh_bastion_host
+    ssh_bastion_user        = var.ssh_bastion_user
+    ssh_bastion_password    = var.ssh_bastion_password
+    ssh_bastion_private_key = var.ssh_bastion_private_key
+
+    PROVISION_DEBUG          = var.provision_debug
+    PROVISION_DATA_NODE_TYPE = each.value.node_type
+    PROVISION_DATA_ETC_HOSTS = base64encode(jsonencode(var.etc_hosts))
+  }
+}

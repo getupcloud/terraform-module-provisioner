@@ -25,6 +25,62 @@ function join()
 }
 
 ##############################
+##         /ETC/HOSTS       ##
+##############################
+
+ETC_HOSTS_MARK="# Auto-generate by getupcloud/terraform-module-provisioner"
+ETC_HOSTS_FILE=/etc/hosts
+
+function create_etc_hosts()
+{
+    local PROVISION_DATA_ETC_HOSTS_JSON=$(base64 -d <<<$PROVISION_DATA_ETC_HOSTS)
+    local ips=( $(jq '.|keys|.[]' -r <<<$PROVISION_DATA_ETC_HOSTS_JSON) )
+
+    if [ ${#ips[*]} -eq 0 ]; then
+        return
+    fi
+
+    for ip in $(sort -u <<<${ips[*]}); do
+        local hosts=(
+            $(jq -r ".\"$ip\"" <<<$PROVISION_DATA_ETC_HOSTS_JSON | sort -u)
+        )
+
+        local line="${ip} ${hosts[*]} ${ETC_HOSTS_MARK}"
+        if grep -q "^\s*${ip}.*${ETC_HOSTS_MARK}\s*\$" $ETC_HOSTS_FILE; then
+            sed -i -e "s|^\s*${ip//./\\.}.*${ETC_HOSTS_MARK}\s*\$|$line|" $ETC_HOSTS_FILE
+        else
+            echo "$ip ${hosts[*]} $ETC_HOSTS_MARK" >> $ETC_HOSTS_FILE
+        fi
+    done
+}
+
+function read_etc_hosts()
+{
+    local total=$(grep -v '^\s*#.*' $ETC_HOSTS_FILE | grep ".*${ETC_HOSTS_MARK}\$" | wc -l)
+    local i=1
+    echo {
+    grep -v '^\s*#.*' $ETC_HOSTS_FILE | grep ".*${ETC_HOSTS_MARK}\$" | sed -e 's/#.*//' | tr -s ' ' | while read line; do
+        ip=${line%% *}
+        hosts=${line#* }
+        echo -n "\"$ip\": \"$hosts\""
+        (( i < total )) && echo , || echo
+        let i=i+1
+    done
+    echo }
+}
+
+function update_etc_hosts()
+{
+    create_etc_hosts
+}
+
+function delete_etc_hosts()
+{
+  # do nothing
+  echo {}
+}
+
+##############################
 ##         Packages         ##
 ##############################
 
@@ -308,5 +364,10 @@ function delete_disks()
   # do nothing
   echo {}
 }
+
+
+##
+## Main
+##
 
 eval $func
