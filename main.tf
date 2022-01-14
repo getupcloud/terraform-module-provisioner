@@ -4,10 +4,10 @@ resource "shell_script" "packages" {
   interpreter = ["${path.module}/ssh-wrapper.sh"]
 
   lifecycle_commands {
-    create = "provisioner.sh create packages"
-    update = "provisioner.sh update packages"
-    read   = "provisioner.sh read packages"
-    delete = "provisioner.sh delete packages"
+    create = "${path.module}/provisioner.sh create packages"
+    update = "${path.module}/provisioner.sh update packages"
+    read   = "${path.module}/provisioner.sh read packages"
+    delete = "${path.module}/provisioner.sh delete packages"
   }
 
   environment = {
@@ -33,10 +33,10 @@ resource "shell_script" "disks" {
   interpreter = ["${path.module}/ssh-wrapper.sh"]
 
   lifecycle_commands {
-    create = "provisioner.sh create disks"
-    update = "provisioner.sh update disks"
-    read   = "provisioner.sh read disks"
-    delete = "provisioner.sh delete disks"
+    create = "${path.module}/provisioner.sh create disks"
+    update = "${path.module}/provisioner.sh update disks"
+    read   = "${path.module}/provisioner.sh read disks"
+    delete = "${path.module}/provisioner.sh delete disks"
   }
 
   environment = {
@@ -61,10 +61,10 @@ resource "shell_script" "etc_hosts" {
   interpreter = ["${path.module}/ssh-wrapper.sh"]
 
   lifecycle_commands {
-    create = "provisioner.sh create etc_hosts"
-    update = "provisioner.sh update etc_hosts"
-    read   = "provisioner.sh read etc_hosts"
-    delete = "provisioner.sh delete etc_hosts"
+    create = "${path.module}/provisioner.sh create etc_hosts"
+    update = "${path.module}/provisioner.sh update etc_hosts"
+    read   = "${path.module}/provisioner.sh read etc_hosts"
+    delete = "${path.module}/provisioner.sh delete etc_hosts"
   }
 
   environment = {
