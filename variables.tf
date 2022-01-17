@@ -1,10 +1,11 @@
-variable "masters" {
-  description = "List of master nodes to provision"
+variable "nodes" {
+  description = "List of nodes to provision"
   type        = list(any)
   default     = []
 
   # Example: [
   #   {
+  #     node_type : "master",
   #     address : "1.2.3.10",
   #     hostname : "master-0",
   #     ssh_private_key : "./master_private_key",
@@ -29,18 +30,9 @@ variable "masters" {
   #         format : true
   #       }
   #     }
-  #   }
-  # ]
-}
-
-variable "workers" {
-  description = "List of worker nodes to provision"
-  type        = list(any)
-  default     = []
-
-  # Example:
-  # [
+  #   },
   #   {
+  #     node_type : "infra",
   #     hostname : "infra-0",
   #     address : "1.2.3.20",
   #     ssh_private_key : "./infra_private_key",
@@ -48,6 +40,7 @@ variable "workers" {
   #     node_taints : ["dedicated=infra:NoSchedule"]
   #   },
   #   {
+  #     node_type : "app",
   #     hostname : "app-0",
   #     address : "1.2.3.30",
   #     ssh_private_key : ".vagrant/machines/app/virtualbox/private_key",

@@ -1,5 +1,5 @@
 resource "shell_script" "disks" {
-  for_each = { for i in concat(local.masters, local.workers) : try(i.address, i.hostname) => i }
+  for_each = { for i in local.nodes : try(i.address, i.hostname) => i }
 
   interpreter = ["${path.module}/ssh-wrapper.sh"]
 
@@ -27,7 +27,7 @@ resource "shell_script" "disks" {
 }
 
 resource "shell_script" "packages" {
-  for_each   = { for i in concat(local.masters, local.workers) : try(i.address, i.hostname) => i }
+  for_each   = { for i in local.nodes : try(i.hostname, i.address) => i }
   depends_on = [shell_script.disks]
 
   interpreter = ["${path.module}/ssh-wrapper.sh"]
@@ -57,7 +57,7 @@ resource "shell_script" "packages" {
 }
 
 resource "shell_script" "etc_hosts" {
-  for_each   = { for i in concat(local.masters, local.workers) : try(i.address, i.hostname) => i }
+  for_each   = { for i in local.nodes : try(i.address, i.hostname) => i }
   depends_on = [shell_script.packages]
 
   interpreter = ["${path.module}/ssh-wrapper.sh"]
