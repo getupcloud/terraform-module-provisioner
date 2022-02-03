@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export SSHPASS="$SSH_PASSWORD"
+
 [ "$PROVISION_DEBUG" == true ] && set -x
 
 {
@@ -7,19 +9,16 @@
 
   if [ "$PROVISION_DEBUG" == true ] ; then
     echo "Hostname: "
-    ssh $SSH_OPTIONS -i $ssh_private_key $ssh_user@$ssh_host hostname
-
-    echo "ssh -i $ssh_private_key $ssh_user@$ssh_host uptime: "
-    ssh $SSH_OPTIONS -i $ssh_private_key $ssh_user@$ssh_host uptime
+    sshpass -e ssh $SSH_OPTIONS -i $SSH_PRIVATE_KEY $SSH_USER@$SSH_HOST 'hostname && date && uptime'
 
     echo -----
-    echo ssh_host                = $ssh_host
-    echo ssh_user                = $ssh_user
-    echo ssh_password            = $ssh_password
-    echo ssh_bastion_host        = $ssh_bastion_host
-    echo ssh_bastion_user        = $ssh_bastion_user
-    echo ssh_bastion_password    = $ssh_bastion_password
-    echo ssh_bastion_private_key = $ssh_bastion_private_key
+    echo "SSH_HOST                = $SSH_HOST"
+    echo "SSH_USER                = $SSH_USER"
+    echo "SSH_PASSWORD            = ${SSH_PASSWORD//?/\*}"
+    echo "SSH_BASTION_HOST        = $SSH_BASTION_HOST"
+    echo "SSH_BASTION_USER        = $SSH_BASTION_USER"
+    echo "SSH_BASTION_PASSWORD    = $SSH_BASTION_PASSWORD"
+    echo "SSH_BASTION_PRIVATE_KEY = ${SSH_BASTION_PRIVATE_KEY//?/\*}"
 
     echo -----
 fi
@@ -28,16 +27,19 @@ fi
 set -- $@
 
 SSH_OPTIONS="-o StrictHostKeyChecking=off -o IdentityAgent=none"
-shfile=$(mktemp -u)
-envfile=$(mktemp -u)
 COMMAND=$1
 shift
 
-cat $COMMAND | ssh $SSH_OPTIONS -i $ssh_private_key $ssh_user@$ssh_host tee $shfile >/dev/null
+function make_envs()
 {
-  for v in "${!PROVISION_@}"; do
-    echo $v=${!v@Q}
-  done
-} | ssh $SSH_OPTIONS -i $ssh_private_key $ssh_user@$ssh_host -- tee $envfile >/dev/null
+    for v in "${!PROVISION_@}"; do
+        echo "export $v=${!v@Q}"
+    done
+    for v in "${!SSH_@}"; do
+        echo "export PROVISION_$v=${!v@Q}"
+    done
+}
 
-ssh $SSH_OPTIONS -i $ssh_private_key $ssh_user@$ssh_host -- sudo bash --noprofile -c "'set -ae; source $envfile; source $shfile $@; rm -f $envfile $shfile'"
+# insert env vars and send script to remote host t oexecute
+sed -e "/^# placeholder=enviroment.*/r "<(make_envs) $COMMAND \
+    | sshpass -e ssh $SSH_OPTIONS -i $SSH_PRIVATE_KEY $SSH_USER@$SSH_HOST -- "script=\$(mktemp) && cat >\$script && bash \$script $*"

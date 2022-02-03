@@ -1,3 +1,31 @@
+resource "shell_script" "auth" {
+  for_each = { for i in local.nodes : try(i.address, i.hostname) => i }
+
+  interpreter = ["${path.module}/ssh-wrapper.sh"]
+
+  lifecycle_commands {
+    create = "${path.module}/provisioner.sh create disks"
+    update = "${path.module}/provisioner.sh update disks"
+    read   = "${path.module}/provisioner.sh read disks"
+    delete = "${path.module}/provisioner.sh delete disks"
+  }
+
+  environment = {
+    SSH_HOST                = try(each.value.address, each.value.hostname)
+    SSH_USER                = try(each.value.ssh_user, var.ssh_user)
+    SSH_PASSWORD            = try(each.value.ssh_password, var.ssh_password)
+    SSH_PRIVATE_KEY         = try(each.value.ssh_private_key, var.ssh_private_key)
+    SSH_BASTION_HOST        = var.ssh_bastion_host
+    SSH_BASTION_USER        = var.ssh_bastion_user
+    SSH_BASTION_PASSWORD    = var.ssh_bastion_password
+    SSH_BASTION_PRIVATE_KEY = var.ssh_bastion_private_key
+
+    PROVISION_DEBUG          = var.provision_debug
+    PROVISION_DATA_NODE_TYPE = each.value.node_type
+    PROVISION_DATA_DISKS     = base64encode(jsonencode(each.value.disks))
+  }
+}
+
 resource "shell_script" "disks" {
   for_each = { for i in local.nodes : try(i.address, i.hostname) => i }
 
@@ -11,14 +39,14 @@ resource "shell_script" "disks" {
   }
 
   environment = {
-    ssh_host                = try(each.value.address, each.value.hostname)
-    ssh_user                = try(each.value.ssh_user, var.ssh_user)
-    ssh_password            = try(each.value.ssh_password, var.ssh_password)
-    ssh_private_key         = try(each.value.ssh_private_key, var.ssh_private_key)
-    ssh_bastion_host        = var.ssh_bastion_host
-    ssh_bastion_user        = var.ssh_bastion_user
-    ssh_bastion_password    = var.ssh_bastion_password
-    ssh_bastion_private_key = var.ssh_bastion_private_key
+    SSH_HOST                = try(each.value.address, each.value.hostname)
+    SSH_USER                = try(each.value.ssh_user, var.ssh_user)
+    SSH_PASSWORD            = try(each.value.ssh_password, var.ssh_password)
+    SSH_PRIVATE_KEY         = try(each.value.ssh_private_key, var.ssh_private_key)
+    SSH_BASTION_HOST        = var.ssh_bastion_host
+    SSH_BASTION_USER        = var.ssh_bastion_user
+    SSH_BASTION_PASSWORD    = var.ssh_bastion_password
+    SSH_BASTION_PRIVATE_KEY = var.ssh_bastion_private_key
 
     PROVISION_DEBUG          = var.provision_debug
     PROVISION_DATA_NODE_TYPE = each.value.node_type
@@ -40,14 +68,14 @@ resource "shell_script" "packages" {
   }
 
   environment = {
-    ssh_host                = try(each.value.address, each.value.hostname)
-    ssh_user                = try(each.value.ssh_user, var.ssh_user)
-    ssh_password            = try(each.value.ssh_password, var.ssh_password)
-    ssh_private_key         = try(each.value.ssh_private_key, var.ssh_private_key)
-    ssh_bastion_host        = var.ssh_bastion_host
-    ssh_bastion_user        = var.ssh_bastion_user
-    ssh_bastion_password    = var.ssh_bastion_password
-    ssh_bastion_private_key = var.ssh_bastion_private_key
+    SSH_HOST                = try(each.value.address, each.value.hostname)
+    SSH_USER                = try(each.value.ssh_user, var.ssh_user)
+    SSH_PASSWORD            = try(each.value.ssh_password, var.ssh_password)
+    SSH_PRIVATE_KEY         = try(each.value.ssh_private_key, var.ssh_private_key)
+    SSH_BASTION_HOST        = var.ssh_bastion_host
+    SSH_BASTION_USER        = var.ssh_bastion_user
+    SSH_BASTION_PASSWORD    = var.ssh_bastion_password
+    SSH_BASTION_PRIVATE_KEY = var.ssh_bastion_private_key
 
     PROVISION_DEBUG                   = var.provision_debug
     PROVISION_DATA_NODE_TYPE          = each.value.node_type
@@ -70,14 +98,14 @@ resource "shell_script" "etc_hosts" {
   }
 
   environment = {
-    ssh_host                = try(each.value.address, each.value.hostname)
-    ssh_user                = try(each.value.ssh_user, var.ssh_user)
-    ssh_password            = try(each.value.ssh_password, var.ssh_password)
-    ssh_private_key         = try(each.value.ssh_private_key, var.ssh_private_key)
-    ssh_bastion_host        = var.ssh_bastion_host
-    ssh_bastion_user        = var.ssh_bastion_user
-    ssh_bastion_password    = var.ssh_bastion_password
-    ssh_bastion_private_key = var.ssh_bastion_private_key
+    SSH_HOST                = try(each.value.address, each.value.hostname)
+    SSH_USER                = try(each.value.ssh_user, var.ssh_user)
+    SSH_PASSWORD            = try(each.value.ssh_password, var.ssh_password)
+    SSH_PRIVATE_KEY         = try(each.value.ssh_private_key, var.ssh_private_key)
+    SSH_BASTION_HOST        = var.ssh_bastion_host
+    SSH_BASTION_USER        = var.ssh_bastion_user
+    SSH_BASTION_PASSWORD    = var.ssh_bastion_password
+    SSH_BASTION_PRIVATE_KEY = var.ssh_bastion_private_key
 
     PROVISION_DEBUG          = var.provision_debug
     PROVISION_DATA_NODE_TYPE = each.value.node_type

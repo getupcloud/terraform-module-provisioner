@@ -1,5 +1,9 @@
 #!/bin/bash
 
+trap "rm -vf $0" EXIT
+
+# placeholder=enviroment - DO NOT REMOVE THIS LINE
+
 if [ "$PROVISION_DEBUG" == true ]; then
   exec 2>>/var/log/provision.log
   set -x
@@ -22,6 +26,74 @@ function join()
   local IFS="$1"
   shift
   echo "$*"
+}
+
+##############################
+##     Auth: ssh/sudo       ##
+##############################
+
+SUDOERS_FILE="/etc/sudoers.d/$PROVISION_SSH_USER"
+AUTHORIZED_KEYS_FILE="$HOME/.ssh/authorized_keys"
+
+function _sudo()
+{
+    if [ -n "$PROVISION_SSH_PASSWORD" ]; then
+        echo -n "$PROVISION_SSH_PASSWORD" | sudo -S  -p '' "$@"
+    else
+        sudo "$@"
+    fi
+}
+
+function ensure_ssh_key()
+{
+    if [ -z "$PROVISION_SSH_PRIVATE_KEY" ]; then
+        return
+    fi
+
+    local ssh_public_key=$(ssh-keygen -yf /dev/stdin <<<$PROVISION_SSH_PRIVATE_KEY)
+    local key_type_and_data_only=$(awk '{print $1 $2}' <<<$ssh_public_key)
+
+    if ! grep -q "$ssh_public_key" "$AUTHORIZED_KEYS_FILE"; then
+        echo "$ssh_public_key" >> $AUTHORIZED_KEYS_FILE
+    fi
+}
+
+function ensure_sudoers()
+{
+    local sudoers_entry="%$PROVISION_SSH_USER ALL=(ALL) NOPASSWD: ALL"
+
+    if ! _sudo grep -q "$sudoers_entry" $SUDOERS_FILE; then
+        echo "$sudoers_entry" | _sudo tee -a $SUDOERS_FILE
+    fi
+}
+
+function create_auth()
+{
+    ensure_ssh_key
+    ensure_sudoers
+    read_auth
+}
+
+function read_auth()
+{
+    local sudoers_id=$(md5sum $SUDOERS_FILE 2>/dev/null | awk '{print $1}') || true
+    local authorized_keys_id=$(md5sum $AUTHORIZED_KEYS_FILE 2>/dev/null | awk '{print $1}') || true
+
+    echo {
+    echo '  "sudoers_id":' "$sudoers_id",
+    echo '  "authorized_keys_id":' "$authorized_keys_id"
+    echo }
+}
+
+function update_aut()
+{
+    create_auth
+}
+
+function delete_auth()
+{
+  # do nothing
+  echo {}
 }
 
 ##############################
@@ -49,7 +121,8 @@ function create_etc_hosts()
         if grep -q "^\s*${ip}.*${ETC_HOSTS_MARK}\s*\$" $ETC_HOSTS_FILE; then
             sed -i -e "s|^\s*${ip//./\\.}.*${ETC_HOSTS_MARK}\s*\$|$line|" $ETC_HOSTS_FILE
         else
-            echo "$ip ${hosts[*]} $ETC_HOSTS_MARK" >> $ETC_HOSTS_FILE
+            echo >> $ETC_HOSTS_FILE
+            echo "$ip ${hosts[*]} $ETC_HOSTS_MARK" >>$ETC_HOSTS_FILE
         fi
     done
 }
