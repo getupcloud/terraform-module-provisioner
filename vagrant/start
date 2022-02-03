@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -x
+
+export VAGRANT_EXPERIMENTAL=disks
+export DEFAULT_INTERFACE=$(ip route list default | awk '{print $5}' | head -n1 || echo eth0)
+export VM_NAME=${PWD##*/}-0
+
+echo "Found network interface: $DEFAULT_INTERFACE ($VM_NAME)"
+
+vagrant destroy -f
+vagrant up
+sleep 3
+
+ip=$(vagrant ssh -c "ip --json a show dev eth1" | jq '.[0]|.addr_info|.[]|select(.family == "inet")|.local' -r | tr -d \\r)
+comm="# terraform-module-provisioner $VM_NAME"
+
+if grep -q $VM_NAME.kubespray /etc/hosts; then
+    sudo cp -vf /etc/hosts /etc/hosts.bkp
+    sudo sed -i -e "s/.*${comm}/$ip $VM_NAME $VM_NAME.kubespray $comm/" /etc/hosts
+else
+    echo "$ip $VM_NAME $VM_NAME.kubespray $comm" | sudo tee -a /etc/hosts
+fi

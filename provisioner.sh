@@ -1,21 +1,30 @@
 #!/bin/bash
 
-trap "rm -vf $0" EXIT
+trap "rm -vf $0 >&2" EXIT
 
 # placeholder=enviroment - DO NOT REMOVE THIS LINE
 
 if [ "$PROVISION_DEBUG" == true ]; then
-  exec 2>>/var/log/provision.log
+  #exec 2>>/var/log/provision.log
   set -x
 fi
 
 func=$1_$2
 date >&2
-echo "Starting [$0 $@: func=$func]" >&2
+echo "Starting [$0 $@: func=$func $(id)]" >&2
 
 function _()
 {
   :
+}
+
+function _sudo()
+{
+    if [ -n "$PROVISION_SSH_PASSWORD" ]; then
+        echo -n "$PROVISION_SSH_PASSWORD" | sudo -S  -p '' "$@"
+    else
+        sudo "$@"
+    fi
 }
 
 ## Join parameters $2... using separator $1
@@ -29,32 +38,41 @@ function join()
 }
 
 ##############################
+##           Setup          ##
+##############################
+
+if ! jq --version &>/dev/null; then
+    _sudo dnf install -y jq
+fi
+
+##############################
 ##     Auth: ssh/sudo       ##
 ##############################
 
 SUDOERS_FILE="/etc/sudoers.d/$PROVISION_SSH_USER"
-AUTHORIZED_KEYS_FILE="$HOME/.ssh/authorized_keys"
+HOME_SSH_DIR="$HOME/.ssh"
+AUTHORIZED_KEYS_FILE="$HOME_SSH_DIR/authorized_keys"
 
-function _sudo()
+function load_ssh_key()
 {
-    if [ -n "$PROVISION_SSH_PASSWORD" ]; then
-        echo -n "$PROVISION_SSH_PASSWORD" | sudo -S  -p '' "$@"
-    else
-        sudo "$@"
-    fi
+    export SSH_PRIVATE_KEY_DATA=$(base64 -d <<<$PROVISION_SSH_PRIVATE_KEY_DATA)
+    export SSH_PUBLIC_KEY_DATA=$(ssh-keygen -yf /dev/stdin <<<$SSH_PRIVATE_KEY_DATA)
+    export SSH_PUBLIC_KEY_DATA_ONLY=$(awk '{print $1 $2}' <<<$SSH_PUBLIC_KEY_DATA)
 }
 
 function ensure_ssh_key()
 {
-    if [ -z "$PROVISION_SSH_PRIVATE_KEY" ]; then
+    if [ -z "$PROVISION_SSH_PRIVATE_KEY_DATA" ]; then
         return
     fi
 
-    local ssh_public_key=$(ssh-keygen -yf /dev/stdin <<<$PROVISION_SSH_PRIVATE_KEY)
-    local key_type_and_data_only=$(awk '{print $1 $2}' <<<$ssh_public_key)
+    load_ssh_key
 
-    if ! grep -q "$ssh_public_key" "$AUTHORIZED_KEYS_FILE"; then
-        echo "$ssh_public_key" >> $AUTHORIZED_KEYS_FILE
+    if ! grep -q "$SSH_PUBLIC_KEY_DATA_ONLY" $AUTHORIZED_KEYS_FILE; then
+        mkdir -p $HOME_SSH_DIR || true
+        chmod 700 $HOME_SSH_DIR
+        echo "$SSH_PUBLIC_KEY_DATA" >> $AUTHORIZED_KEYS_FILE
+        chmod 600 $AUTHORIZED_KEYS_FILE
     fi
 }
 
@@ -63,7 +81,7 @@ function ensure_sudoers()
     local sudoers_entry="%$PROVISION_SSH_USER ALL=(ALL) NOPASSWD: ALL"
 
     if ! _sudo grep -q "$sudoers_entry" $SUDOERS_FILE; then
-        echo "$sudoers_entry" | _sudo tee -a $SUDOERS_FILE
+        _sudo bash -xc "echo '$sudoers_entry' >> $SUDOERS_FILE"
     fi
 }
 
@@ -76,16 +94,16 @@ function create_auth()
 
 function read_auth()
 {
-    local sudoers_id=$(md5sum $SUDOERS_FILE 2>/dev/null | awk '{print $1}') || true
+    local sudoers_id=$(_sudo md5sum $SUDOERS_FILE 2>/dev/null | awk '{print $1}') || true
     local authorized_keys_id=$(md5sum $AUTHORIZED_KEYS_FILE 2>/dev/null | awk '{print $1}') || true
 
     echo {
-    echo '  "sudoers_id":' "$sudoers_id",
-    echo '  "authorized_keys_id":' "$authorized_keys_id"
+    echo '  "sudoers_id":' "\"$sudoers_id\"",
+    echo '  "authorized_keys_id":' "\"$authorized_keys_id\""
     echo }
 }
 
-function update_aut()
+function update_auth()
 {
     create_auth
 }

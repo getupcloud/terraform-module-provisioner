@@ -1,6 +1,6 @@
 variable "nodes" {
   description = "List of nodes to provision"
-  type        = list(any)
+  type        = any
   default     = []
 
   # Example: [

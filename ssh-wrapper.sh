@@ -1,8 +1,12 @@
 #!/bin/bash
 
+set -e
+
 export SSHPASS="$SSH_PASSWORD"
 
 [ "$PROVISION_DEBUG" == true ] && set -x
+
+export SSH_OPTIONS="-o StrictHostKeyChecking=off -o IdentityAgent=none -o UserKnownHostsFile=/dev/null"
 
 {
   echo SSH wrapper[$#]: $@
@@ -19,14 +23,11 @@ export SSHPASS="$SSH_PASSWORD"
     echo "SSH_BASTION_USER        = $SSH_BASTION_USER"
     echo "SSH_BASTION_PASSWORD    = $SSH_BASTION_PASSWORD"
     echo "SSH_BASTION_PRIVATE_KEY = ${SSH_BASTION_PRIVATE_KEY//?/\*}"
-
     echo -----
 fi
 } >&2
 
 set -- $@
-
-SSH_OPTIONS="-o StrictHostKeyChecking=off -o IdentityAgent=none"
 COMMAND=$1
 shift
 
@@ -42,4 +43,4 @@ function make_envs()
 
 # insert env vars and send script to remote host t oexecute
 sed -e "/^# placeholder=enviroment.*/r "<(make_envs) $COMMAND \
-    | sshpass -e ssh $SSH_OPTIONS -i $SSH_PRIVATE_KEY $SSH_USER@$SSH_HOST -- "script=\$(mktemp) && cat >\$script && bash \$script $*"
+    | sshpass -e ssh $SSH_OPTIONS -i $SSH_PRIVATE_KEY $SSH_USER@$SSH_HOST -- "script=\$(mktemp) && cat >\$script && ${SUDO} bash \$script $*"

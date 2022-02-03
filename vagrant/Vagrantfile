@@ -1,0 +1,85 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+memory = 4096
+local_interface = ENV["DEFAULT_INTERFACE"] || "eth0"
+hostname = "#{ENV["VM_NAME"]}"
+disks = [
+  {
+    :name => "containers",
+    :device => "/dev/sdb",
+    :mount_point => "/var/lib/containers",
+    :size_gb => 20,
+    :ide_port => 0,
+    :ide_device => 1,
+  },
+  {
+    :name => "kubelet",
+    :device => "/dev/sdc",
+    :mount_point => "/var/lib/kubelet",
+    :size_gb => 2,
+    :ide_port => 1,
+    :ide_device => 0,
+  }
+]
+
+if hostname.start_with?("master") then
+  disks << {
+    :name => "etcd",
+    :device => "/dev/sdd",
+    :mount_point => "/var/lib/etcd",
+    :size_gb => 1,
+    :ide_port => 1,
+    :ide_device => 1
+   }
+end
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "centos/stream8"
+  config.vm.provider "virtualbox"
+  config.vm.hostname = hostname
+  config.vm.network "public_network", bridge: local_interface
+  config.ssh.verify_host_key = :never
+  # https://stackoverflow.com/questions/28471542/cant-ssh-to-vagrant-vms-using-the-insecure-private-key-vagrant-1-7-2
+  config.ssh.insert_key = false
+  config.ssh.private_key_path = "~/.vagrant.d/insecure_private_key"
+
+  config.vm.provider :virtualbox do |vb|
+    vb.gui = true
+    vb.memory = memory
+    vb.customize ["modifyvm", :id, "--paravirtprovider", "kvm"]
+
+    disks.each do |disk|
+      vdi = "#{disk[:name]}.vdi"
+      unless File.exist?(vdi)
+        vb.customize [ "createmedium", "disk", "--filename", "#{disk[:name]}.vdi", "--format", "vdi", "--size", disk[:size_gb] * 1024 ]
+      end
+      vb.customize ['storageattach', :id,  '--storagectl', 'IDE', '--port', disk[:ide_port], '--device', disk[:ide_device], '--type', 'hdd', '--medium', vdi]
+    end
+  end
+
+  config.vm.provision "shell", name: "host-setup", inline: <<~SHELL
+    # /vagrant/provision/provision.sh local-provision
+    set -x
+    sed -i s/^SELINUX=.*/SELINUX=disabled/ /etc/selinux/config
+    setenforce 0
+    #{
+      s = ""
+      disks.each do |disk|
+        s += "mkfs.xfs #{disk[:device]}\n"
+        s += "echo #{[disk[:device], disk[:mount_point], "xfs defaults,nofail 0 0"].join(" ")} >> /etc/fstab\n"
+      end
+      s
+    }
+    useradd provisioner
+    echo -n provisioner | passwd --force --stdin provisioner
+    echo '%provisioner ALL=(ALL) ALL' > /etc/sudoers.d/provisioner
+    sed -i -e 's/^\s*PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config
+  SHELL
+
+  config.vm.provision "shell" do |shell|
+    shell.privileged = true
+    shell.inline = 'echo rebooting...'
+    shell.reboot = true
+  end
+end
