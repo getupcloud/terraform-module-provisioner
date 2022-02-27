@@ -101,6 +101,10 @@ variable "install_packages" {
   description = "Packages to install on nodes"
   type        = list(string)
   default = [
+    "kernel-devel",
+    "kernel-headers",
+    "clang",
+    "llvm",
     "chrony",
     "conntrack-tools",
     "git",

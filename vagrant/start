@@ -9,6 +9,10 @@ export VM_NAME=${PWD##*/}-0
 echo "Found network interface: $DEFAULT_INTERFACE ($VM_NAME)"
 
 vagrant destroy -f
+if [ "$1" == destroy ]; then
+  exit
+fi
+
 vagrant up
 sleep 3
 
