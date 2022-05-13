@@ -73,6 +73,7 @@ function ensure_ssh_key()
         chmod 700 $HOME_SSH_DIR
         echo "$SSH_PUBLIC_KEY_DATA" >> $AUTHORIZED_KEYS_FILE
         chmod 600 $AUTHORIZED_KEYS_FILE
+        chown $PROVISION_SSH_USER $AUTHORIZED_KEYS_FILE
     fi
 }
 
@@ -231,6 +232,61 @@ function update_packages()
 }
 
 function delete_packages()
+{
+  # do nothing
+  echo {}
+}
+
+##############################
+##         Systemctl        ##
+##############################
+
+function _read_systemctl()
+{
+  local items=()
+
+  for service in ${PROVISION_DATA_SYSTEMCTL_ENABLE} ${PROVISION_DATA_SYSTEMCTL_DISABLE}; do
+    local status=$(systemctl is-enabled $service)
+    if [ "$status" == "enabled" ]; then
+      items+=( "\"$service\":true" )
+    else
+      items+=( "\"$service\":false" )
+    fi
+  done
+
+  echo {
+  join , "${items[@]}"
+  echo }
+}
+
+function create_systemctl()
+{
+  {
+    for service in ${PROVISION_DATA_SYSTEMCTL_ENABLE}; do
+      systemctl enable $service
+      systemctl start $service
+    done
+
+    for service in ${PROVISION_DATA_SYSTEMCTL_DISABLE}; do
+      systemctl disable $service
+      systemctl stop $service
+    done
+  } >&2
+
+  _read_systemctl
+}
+
+function read_systemctl()
+{
+  _read_systemctl
+}
+
+function update_systemctl()
+{
+  create_systemctl
+}
+
+function delete_systemctl()
 {
   # do nothing
   echo {}

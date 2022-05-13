@@ -93,6 +93,39 @@ resource "shell_script" "packages" {
   }
 }
 
+resource "shell_script" "systemctl" {
+  for_each   = { for i in local.nodes : try(i.hostname, i.address) => i }
+  depends_on = [shell_script.packages]
+
+  interpreter = ["${path.module}/ssh-wrapper.sh"]
+
+  lifecycle_commands {
+    create = "${path.module}/provisioner.sh create systemctl"
+    update = "${path.module}/provisioner.sh update systemctl"
+    read   = "${path.module}/provisioner.sh read systemctl"
+    delete = "${path.module}/provisioner.sh delete systemctl"
+  }
+
+  environment = {
+    SSH_HOST                     = try(each.value.address, each.value.hostname)
+    SSH_USER                     = try(each.value.ssh_user, var.ssh_user)
+    SSH_PASSWORD                 = try(each.value.ssh_password, var.ssh_password)
+    SSH_PRIVATE_KEY              = try(each.value.ssh_private_key, var.ssh_private_key)
+    SSH_PRIVATE_KEY_DATA         = filebase64(try(each.value.ssh_private_key, var.ssh_private_key))
+    SSH_BASTION_HOST             = var.ssh_bastion_host
+    SSH_BASTION_USER             = var.ssh_bastion_user
+    SSH_BASTION_PASSWORD         = var.ssh_bastion_password
+    SSH_BASTION_PRIVATE_KEY      = var.ssh_bastion_private_key
+    SSH_BASTION_PRIVATE_KEY_DATA = var.ssh_bastion_private_key != "" ? filebase64(var.ssh_bastion_private_key) : ""
+    SUDO                         = "sudo"
+
+    PROVISION_DEBUG                  = var.provision_debug
+    PROVISION_DATA_NODE_TYPE         = each.value.node_type
+    PROVISION_DATA_SYSTEMCTL_ENABLE  = join(" ", sort(var.systemctl_enable))
+    PROVISION_DATA_SYSTEMCTL_DISABLE = join(" ", sort(var.systemctl_disable))
+  }
+}
+
 resource "shell_script" "etc_hosts" {
   for_each   = { for i in local.nodes : try(i.address, i.hostname) => i }
   depends_on = [shell_script.packages]
