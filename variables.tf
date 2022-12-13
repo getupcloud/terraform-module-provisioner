@@ -147,7 +147,7 @@ variable "provision_debug" {
 variable "systemctl_enable" {
   description = "Services to enable on nodes"
   type        = list(string)
-  default     = [
+  default = [
     "chronyd",
     "iscsid"
   ]
