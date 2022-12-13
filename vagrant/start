@@ -14,9 +14,15 @@ if [ "$1" == destroy ]; then
 fi
 
 vagrant up
-sleep 3
 
-ip=$(vagrant ssh -c "ip --json a show dev eth1" | jq '.[0]|.addr_info|.[]|select(.family == "inet")|.local' -r | tr -d \\r)
+ip=''
+while [ -z "$ip" ]; do
+  echo Discovering IP for eth1 ...
+  sleep 3
+  #ip=$(vagrant ssh -c "ip --json a show dev eth1" | jq '.[0]|.addr_info|.[]|select(.family == "inet")|.local' -r | tr -d \\r)
+  ip=$(vagrant ssh -c "ip a show dev eth1 | awk '/\<inet\>/{print \$2}' | cut -f1 -d/" | tr -d \\r)
+done
+
 comm="# terraform-module-provisioner $VM_NAME"
 
 if grep -q $VM_NAME.kubespray /etc/hosts; then
