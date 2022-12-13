@@ -79,7 +79,7 @@ function ensure_ssh_key()
 
 function ensure_sudoers()
 {
-    local sudoers_entry="%$PROVISION_SSH_USER ALL=(ALL) NOPASSWD: ALL"
+    local sudoers_entry="$PROVISION_SSH_USER ALL=(ALL) NOPASSWD: ALL"
 
     if ! _sudo grep -q "$sudoers_entry" $SUDOERS_FILE; then
         _sudo bash -xc "echo '$sudoers_entry' >> $SUDOERS_FILE"
