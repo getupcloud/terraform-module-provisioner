@@ -274,6 +274,7 @@ function create_systemctl()
   } >&2
 
   _read_systemctl
+  mkdir -p /var/log/journal
 }
 
 function read_systemctl()
