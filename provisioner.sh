@@ -212,6 +212,11 @@ function _read_packages()
 
 function create_packages()
 {
+  if ! which yum &>/dev/null; then
+    echo {}
+    return
+  fi
+
   {
     _yum_update
     _uninstall_packages ${PROVISION_DATA_UNINSTALL_PACKAGES}
@@ -223,11 +228,21 @@ function create_packages()
 
 function read_packages()
 {
+  if ! which yum &>/dev/null; then
+    echo {}
+    return
+  fi
+
   _read_packages ${PROVISION_DATA_INSTALL_PACKAGES}
 }
 
 function update_packages()
 {
+  if ! which yum &>/dev/null; then
+    echo {}
+    return
+  fi
+
   create_packages
 }
 
