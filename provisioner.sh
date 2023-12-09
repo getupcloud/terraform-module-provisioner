@@ -218,7 +218,7 @@ function create_packages()
   fi
 
   {
-    _yum_update
+    # _yum_update
     _uninstall_packages ${PROVISION_DATA_UNINSTALL_PACKAGES}
     _install_packages ${PROVISION_DATA_INSTALL_PACKAGES}
   } >&2
