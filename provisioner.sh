@@ -354,6 +354,13 @@ function _resolve_device_name()
   return 1
 }
 
+function _wait_device_uuid()
+{
+  local device="$1"
+  for i in {1..10}; do
+    [ -z "$(lsblk -pno UUID $device)" ] || return
+  done
+}
 
 # print fstab line for device ($1)
 function _fstab_get_line()
@@ -370,7 +377,7 @@ function _fstab_get_line()
   local partuuid=$(lsblk -pno PARTUUID $device)
   local partlabel=$(lsblk -pno PARTLABEL $device)
 
-  grep -m1 -E "^[[:space:]]*($1|$device|UUID=$uuid|LABEL=$label|PARTUUID=$partuid|PARTLABEL=$partlabel)[[:space:]]" /etc/fstab
+  grep -m1 -E '^[[:space:]]*('$device'|UUID='$uuid'|LABEL='$label'|PARTUUID='$partuid'|PARTLABEL='$partlabel')[[:space]]' /etc/fstab
 }
 
 # check if device ($1) is in /etc/fstab
@@ -411,7 +418,7 @@ function _remove_from_fstab()
   local partuuid=$(lsblk -pno PARTUUID $device)
   local partlabel=$(lsblk -pno PARTLABEL $device)
 
-  sed -i -E "s;^[^\s#]*(UUID=$uuid|LABEL=$label|PARTUUID=$partuuid|PARTLABEL=$partlabel|$device)\s.*;#\0;g"  /etc/fstab
+  sed -i -E 's;^\s*('$device'|UUID='$uuid'|LABEL='$label'|PARTUUID='$partuuid'|PARTLABEL='$partlabel')\s.*;#\0;g' /etc/fstab
 }
 
 function _read_disks()
@@ -500,10 +507,13 @@ function _create_disks()
             done
         fi
 
-        if [ "$format" == "true" ]; then
-            if [ -n "$filesystem" ] && [ "$filesystem" != "$current_filesystem" ]; then
-                mkfs.$filesystem $filesystem_options $device_name
-            fi
+        if [ "$format" == "true" ] && [ -n "$filesystem" ]; then
+          if [ -n "$current_filesystem" ]; then
+            echo "Already formated device: $device_name ($current_filesystem)" >&2
+          else
+            mkfs.$filesystem $filesystem_options $device_name
+            _wait_device_uuid $device_name
+          fi
         fi
 
         _remove_from_fstab $device_name
@@ -512,6 +522,7 @@ function _create_disks()
     done
 
   systemctl daemon-reload
+  sync
 }
 
 function create_disks()
