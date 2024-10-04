@@ -53,7 +53,8 @@ fi
 ##     Auth: ssh/sudo       ##
 ##############################
 
-SUDOERS_FILE="/etc/sudoers.d/$PROVISION_SSH_USER"
+SUDOERS_FILE="/etc/sudoers.d/${PROVISION_SSH_USER//./_}"
+SUDOERS_FILE="${SUDOERS_FILE//\~/_}"
 HOME_SSH_DIR="$HOME/.ssh"
 AUTHORIZED_KEYS_FILE="$HOME_SSH_DIR/authorized_keys"
 
