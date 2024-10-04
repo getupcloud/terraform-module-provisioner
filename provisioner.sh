@@ -41,6 +41,10 @@ function join()
 ##           Setup          ##
 ##############################
 
+if [ -e /etc/os-release ]; then
+    source /etc/os-release
+fi
+
 if ! jq --version &>/dev/null; then
     _sudo dnf install -y jq
 fi
@@ -176,21 +180,28 @@ function delete_etc_hosts()
 ##         Packages         ##
 ##############################
 
-function _yum_update()
+function _dnf_update()
 {
-    yum clean all -y
-    yum update -y
+    dnf clean all -y
+    dnf update -y
 }
 
 function _uninstall_packages()
 {
-  yum remove -y "$@"
+  dnf remove -y "$@"
 }
 
 function _install_packages()
 {
-  yum install -y --enablerepo=powertools epel-release
-  yum install -y --enablerepo=powertools "$@"
+  if [ "$ID" == centos ] && [ "$VERSION_ID" == 8 ]; then
+    dnf config-manager --set-enabled powertools
+    dnf install -y epel-release
+    dnf install -y "$@"
+  elif [ "$ID" == centos ] && [ "$VERSION_ID" == 9 ]; then
+    dnf config-manager --set-enabled crb
+    dnf install -y epel-release epel-next-release
+    dnf install -y "$@"
+  fi
 }
 
 function _read_packages()
@@ -212,13 +223,13 @@ function _read_packages()
 
 function create_packages()
 {
-  if ! which yum &>/dev/null; then
+  if ! which dnf &>/dev/null; then
     echo {}
     return
   fi
 
   {
-    # _yum_update
+    # _dnf_update
     _uninstall_packages ${PROVISION_DATA_UNINSTALL_PACKAGES}
     _install_packages ${PROVISION_DATA_INSTALL_PACKAGES}
   } >&2
@@ -228,7 +239,7 @@ function create_packages()
 
 function read_packages()
 {
-  if ! which yum &>/dev/null; then
+  if ! which dnf &>/dev/null; then
     echo {}
     return
   fi
@@ -238,7 +249,7 @@ function read_packages()
 
 function update_packages()
 {
-  if ! which yum &>/dev/null; then
+  if ! which dnf &>/dev/null; then
     echo {}
     return
   fi
