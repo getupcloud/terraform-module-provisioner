@@ -460,6 +460,7 @@ function _create_disks()
         sed -i -E 's/^([^\s#]+.*\bswap\b.*)/#\0/g' /etc/fstab
     fi
     swapoff -a || true
+    mkdir -p /var/lib/containers/docker
 
     export PROVISION_DATA_DISKS_JSON="$(base64 -d <<<$PROVISION_DATA_DISKS)"
     if [ "$(jq length <<<$PROVISION_DATA_DISKS_JSON)" -eq 0 ]; then
