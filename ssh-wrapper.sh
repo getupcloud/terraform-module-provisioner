@@ -6,7 +6,7 @@ export SSHPASS="$SSH_PASSWORD"
 
 [ "$PROVISION_DEBUG" == true ] && set -x
 
-export SSH_OPTIONS="-o StrictHostKeyChecking=off -o IdentityAgent=none -o UserKnownHostsFile=/dev/null -o 'SendEnv SUDO_PASSWORD'"
+export SSH_OPTIONS="-o StrictHostKeyChecking=off -o IdentityAgent=none -o UserKnownHostsFile=/dev/null -o SendEnv=SUDO_PASSWORD"
 
 {
   echo SSH wrapper[$#]: $@
