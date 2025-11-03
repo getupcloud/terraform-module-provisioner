@@ -4,6 +4,7 @@ VERSION        ?= $(FILE_VERSION)
 RELEASE        := v$(VERSION)
 SEMVER_REGEX   := ^([0-9]+)\.([0-9]+)\.([0-9]+)(-([0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*))?(\+[0-9A-Za-z-]+)?$
 
+SHELL = /bin/bash
 .ONESHELL:
 
 test: fmt lint init validate
