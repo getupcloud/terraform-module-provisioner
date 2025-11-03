@@ -91,6 +91,12 @@ variable "ssh_bastion_private_key" {
   default     = ""
 }
 
+variable "sudo_password" {
+  description = "Password for sudo command on the remote hosts"
+  type        = string
+  default     = ""
+}
+
 variable "custom_provisioner" {
   description = "Path for custom provisioner script"
   type        = string

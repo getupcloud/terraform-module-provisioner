@@ -52,7 +52,8 @@ resource "shell_script" "disks" {
     SSH_BASTION_PASSWORD         = var.ssh_bastion_password
     SSH_BASTION_PRIVATE_KEY      = var.ssh_bastion_private_key
     SSH_BASTION_PRIVATE_KEY_DATA = var.ssh_bastion_private_key != "" ? filebase64(var.ssh_bastion_private_key) : ""
-    SUDO                         = "sudo"
+    SUDO                         = try(each.value.sudo_password, var.sudo_password) != "" ? "SUDO_ASKPASS=/usr/local/bin/sudopass sudo -A" : "sudo"
+    SUDO_PASSWORD                = try(each.value.sudo_password, var.sudo_password)
 
     PROVISION_DEBUG          = var.provision_debug
     PROVISION_DATA_NODE_TYPE = each.value.node_type
@@ -84,7 +85,8 @@ resource "shell_script" "packages" {
     SSH_BASTION_PASSWORD         = var.ssh_bastion_password
     SSH_BASTION_PRIVATE_KEY      = var.ssh_bastion_private_key
     SSH_BASTION_PRIVATE_KEY_DATA = var.ssh_bastion_private_key != "" ? filebase64(var.ssh_bastion_private_key) : ""
-    SUDO                         = "sudo"
+    SUDO                         = try(each.value.sudo_password, var.sudo_password) != "" ? "SUDO_ASKPASS=/usr/local/bin/sudopass sudo -A" : "sudo"
+    SUDO_PASSWORD                = try(each.value.sudo_password, var.sudo_password)
 
     PROVISION_DEBUG                   = var.provision_debug
     PROVISION_DATA_NODE_TYPE          = each.value.node_type
@@ -117,7 +119,8 @@ resource "shell_script" "systemctl" {
     SSH_BASTION_PASSWORD         = var.ssh_bastion_password
     SSH_BASTION_PRIVATE_KEY      = var.ssh_bastion_private_key
     SSH_BASTION_PRIVATE_KEY_DATA = var.ssh_bastion_private_key != "" ? filebase64(var.ssh_bastion_private_key) : ""
-    SUDO                         = "sudo"
+    SUDO                         = try(each.value.sudo_password, var.sudo_password) != "" ? "SUDO_ASKPASS=/usr/local/bin/sudopass sudo -A" : "sudo"
+    SUDO_PASSWORD                = try(each.value.sudo_password, var.sudo_password)
 
     PROVISION_DEBUG                  = var.provision_debug
     PROVISION_DATA_NODE_TYPE         = each.value.node_type
@@ -150,7 +153,8 @@ resource "shell_script" "etc_hosts" {
     SSH_BASTION_PASSWORD         = var.ssh_bastion_password
     SSH_BASTION_PRIVATE_KEY      = var.ssh_bastion_private_key
     SSH_BASTION_PRIVATE_KEY_DATA = var.ssh_bastion_private_key != "" ? filebase64(var.ssh_bastion_private_key) : ""
-    SUDO                         = "sudo"
+    SUDO                         = try(each.value.sudo_password, var.sudo_password) != "" ? "SUDO_ASKPASS=/usr/local/bin/sudopass sudo -A" : "sudo"
+    SUDO_PASSWORD                = try(each.value.sudo_password, var.sudo_password)
 
     PROVISION_DEBUG          = var.provision_debug
     PROVISION_DATA_NODE_TYPE = each.value.node_type
