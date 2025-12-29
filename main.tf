@@ -1,13 +1,13 @@
 resource "shell_script" "auth" {
   for_each = { for i in local.nodes : try(i.address, i.hostname) => i }
 
-  interpreter = ["${path.module}/ssh-wrapper.sh"]
+  interpreter = ["${trimprefix(path.module,"${abspath(path.root)}/")}/ssh-wrapper.sh"]
 
   lifecycle_commands {
-    create = "${path.module}/provisioner.sh create auth"
-    update = "${path.module}/provisioner.sh update auth"
-    read   = "${path.module}/provisioner.sh read auth"
-    delete = "${path.module}/provisioner.sh delete auth"
+    create = "${trimprefix(path.module,"${abspath(path.root)}/")}/provisioner.sh create auth"
+    update = "${trimprefix(path.module,"${abspath(path.root)}/")}/provisioner.sh update auth"
+    read   = "${trimprefix(path.module,"${abspath(path.root)}/")}/provisioner.sh read auth"
+    delete = "${trimprefix(path.module,"${abspath(path.root)}/")}/provisioner.sh delete auth"
   }
 
   environment = {
@@ -32,13 +32,13 @@ resource "shell_script" "disks" {
   for_each   = { for i in local.nodes : try(i.address, i.hostname) => i }
   depends_on = [shell_script.auth]
 
-  interpreter = ["${path.module}/ssh-wrapper.sh"]
+  interpreter = ["${trimprefix(path.module,"${abspath(path.root)}/")}/ssh-wrapper.sh"]
 
   lifecycle_commands {
-    create = "${path.module}/provisioner.sh create disks"
-    update = "${path.module}/provisioner.sh update disks"
-    read   = "${path.module}/provisioner.sh read disks"
-    delete = "${path.module}/provisioner.sh delete disks"
+    create = "${trimprefix(path.module,"${abspath(path.root)}/")}/provisioner.sh create disks"
+    update = "${trimprefix(path.module,"${abspath(path.root)}/")}/provisioner.sh update disks"
+    read   = "${trimprefix(path.module,"${abspath(path.root)}/")}/provisioner.sh read disks"
+    delete = "${trimprefix(path.module,"${abspath(path.root)}/")}/provisioner.sh delete disks"
   }
 
   environment = {
@@ -65,13 +65,13 @@ resource "shell_script" "packages" {
   for_each   = { for i in local.nodes : try(i.hostname, i.address) => i }
   depends_on = [shell_script.disks]
 
-  interpreter = ["${path.module}/ssh-wrapper.sh"]
+  interpreter = ["${trimprefix(path.module,"${abspath(path.root)}/")}/ssh-wrapper.sh"]
 
   lifecycle_commands {
-    create = "${path.module}/provisioner.sh create packages"
-    update = "${path.module}/provisioner.sh update packages"
-    read   = "${path.module}/provisioner.sh read packages"
-    delete = "${path.module}/provisioner.sh delete packages"
+    create = "${trimprefix(path.module,"${abspath(path.root)}/")}/provisioner.sh create packages"
+    update = "${trimprefix(path.module,"${abspath(path.root)}/")}/provisioner.sh update packages"
+    read   = "${trimprefix(path.module,"${abspath(path.root)}/")}/provisioner.sh read packages"
+    delete = "${trimprefix(path.module,"${abspath(path.root)}/")}/provisioner.sh delete packages"
   }
 
   environment = {
@@ -99,13 +99,13 @@ resource "shell_script" "systemctl" {
   for_each   = { for i in local.nodes : try(i.hostname, i.address) => i }
   depends_on = [shell_script.packages]
 
-  interpreter = ["${path.module}/ssh-wrapper.sh"]
+  interpreter = ["${trimprefix(path.module,"${abspath(path.root)}/")}/ssh-wrapper.sh"]
 
   lifecycle_commands {
-    create = "${path.module}/provisioner.sh create systemctl"
-    update = "${path.module}/provisioner.sh update systemctl"
-    read   = "${path.module}/provisioner.sh read systemctl"
-    delete = "${path.module}/provisioner.sh delete systemctl"
+    create = "${trimprefix(path.module,"${abspath(path.root)}/")}/provisioner.sh create systemctl"
+    update = "${trimprefix(path.module,"${abspath(path.root)}/")}/provisioner.sh update systemctl"
+    read   = "${trimprefix(path.module,"${abspath(path.root)}/")}/provisioner.sh read systemctl"
+    delete = "${trimprefix(path.module,"${abspath(path.root)}/")}/provisioner.sh delete systemctl"
   }
 
   environment = {
@@ -131,15 +131,15 @@ resource "shell_script" "systemctl" {
 
 resource "shell_script" "etc_hosts" {
   for_each   = { for i in local.nodes : try(i.address, i.hostname) => i }
-  depends_on = [shell_script.packages]
+  #depends_on = [shell_script.packages]
 
-  interpreter = ["${path.module}/ssh-wrapper.sh"]
+  interpreter = ["${trimprefix(path.module,"${abspath(path.root)}/")}/ssh-wrapper.sh"]
 
   lifecycle_commands {
-    create = "${path.module}/provisioner.sh create etc_hosts"
-    update = "${path.module}/provisioner.sh update etc_hosts"
-    read   = "${path.module}/provisioner.sh read etc_hosts"
-    delete = "${path.module}/provisioner.sh delete etc_hosts"
+    create = "${trimprefix(path.module,"${abspath(path.root)}/")}/provisioner.sh create etc_hosts"
+    update = "${trimprefix(path.module,"${abspath(path.root)}/")}/provisioner.sh update etc_hosts"
+    read   = "${trimprefix(path.module,"${abspath(path.root)}/")}/provisioner.sh read etc_hosts"
+    delete = "${trimprefix(path.module,"${abspath(path.root)}/")}/provisioner.sh delete etc_hosts"
   }
 
   environment = {
