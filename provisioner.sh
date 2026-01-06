@@ -525,6 +525,8 @@ function _create_disks()
   systemctl daemon-reload
   sync
   mkdir -p /var/lib/containers/docker
+  systemctl try-restart docker &>/dev/null || true
+  systemctl try-restart containerd &>/dev/null || true
 }
 
 function create_disks()
